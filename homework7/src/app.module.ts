@@ -7,11 +7,9 @@ import { RolesModule } from './roles/roles.module';
 import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-const envFilePath: string = '.env';
-
 @Module({
     imports: [
-        ConfigModule.forRoot({ envFilePath }),
+        ConfigModule.forRoot({ envFilePath: '.env' }),
         TypeOrmModule.forRoot({
             type: 'postgres',
             host: process.env.POSTGRES_HOST,
