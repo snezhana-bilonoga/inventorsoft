@@ -1,30 +1,30 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { RolesService } from 'src/roles/roles.service';
+import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user-dto';
 import { User } from './users.model';
 
 @Injectable()
 export class UsersService {
     constructor(
-        @InjectModel(User) private userRepository: typeof User,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
         private roleService: RolesService
     ) {}
 
     async createUser(dto: CreateUserDto) {
-        const user = await this.userRepository.create(dto);
+        const user = this.userRepository.create(dto);
         const role = await this.roleService.getRoleByValue('USER');
-        await user.$set('roles', [role.id]);
+        await this.userRepository.save({ ...user, role });
 
         const newUser = await this.getUserByEmail(dto.email);
         return newUser;
     }
 
     async getAllUsers() {
-        const users = await this.userRepository.findAll({
-            include: { all: true },
-        });
+        const users = await this.userRepository.find({ loadRelationIds: true });
         return users;
     }
 
@@ -32,10 +32,13 @@ export class UsersService {
         const user = await this.getUserByEmail(email);
 
         if (user) {
-            user.set('email', dto.email);
-            user.set('password', await bcrypt.hash(dto.password, 5));
-            await user.save();
-            return user;
+            const updatedUser = {
+                ...user,
+                email: dto.email,
+                password: await bcrypt.hash(dto.password, 5),
+            };
+            this.userRepository.save(updatedUser);
+            return updatedUser;
         }
 
         throw new HttpException('User not exists', HttpStatus.NOT_FOUND);
@@ -45,7 +48,7 @@ export class UsersService {
         const user = await this.getUserByEmail(email);
 
         if (user) {
-            await user.destroy();
+            await this.userRepository.remove(user);
             return user;
         }
 
@@ -53,11 +56,7 @@ export class UsersService {
     }
 
     async getUserByEmail(email: string) {
-        const user = await this.userRepository.findOne({
-            where: { email },
-            include: { all: true },
-        });
-
+        const user = await this.userRepository.findOneBy({ email });
         return user;
     }
 }

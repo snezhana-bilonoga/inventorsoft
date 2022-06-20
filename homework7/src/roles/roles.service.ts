@@ -1,24 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
+import { InjectRepository } from '@nestjs/typeorm';
 import { CreateRoleDto } from './dto/create-role-dto';
 import { Role } from '../roles/roles.model';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class RolesService {
-    constructor(@InjectModel(Role) private roleRepository: typeof Role) {}
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>;
 
     async createRole(dto: CreateRoleDto) {
-        const role = await this.roleRepository.create(dto);
+        const role = this.roleRepository.save(dto);
         return role;
     }
 
     async getRoleByValue(value: string) {
-        const role = await this.roleRepository.findOne({ where: { value } });
+        const role = await this.roleRepository.findOneBy({ value });
         return role;
     }
 
     async getAllRoles() {
-        const roles = await this.roleRepository.findAll();
+        const roles = await this.roleRepository.find();
         return roles;
     }
 }
